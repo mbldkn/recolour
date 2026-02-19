@@ -1,0 +1,29 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: recolour-backend
+    environment:
+      PORT: "3000"
+      ASSETS_DIR: /workspace/recolour-case
+    ports:
+      - "3000:3000"
+    volumes:
+      - backend_data:/app/backend/data
+      - ../recolour-case:/workspace/recolour-case:ro
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE: ""
+    container_name: recolour-frontend
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+
+volumes:
+  backend_data:
