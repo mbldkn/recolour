@@ -31,12 +31,13 @@ afterAll(() => worker.stop());
 test("sending ticket twice does not create duplicate jobs", async () => {
     const create = await request(app)
         .post("/api/tickets")
+        .set("x-role", "operator")
         .send({ photoSetId: "Ticket 1", priority: "high", partnerId: "p1" });
 
     const id = create.body.id;
 
-    await request(app).post(`/api/tickets/${id}/action`).send({ action: "send_to_partner" });
-    await request(app).post(`/api/tickets/${id}/action`).send({ action: "send_to_partner" });
+    await request(app).post(`/api/tickets/${id}/action`).set("x-role", "operator").send({ action: "send_to_partner" });
+    await request(app).post(`/api/tickets/${id}/action`).set("x-role", "operator").send({ action: "send_to_partner" });
 
     const jobs = await request(app).get("/api/jobs");
     const jobsForTicket = jobs.body.filter((j: any) => j.ticketId === id);
@@ -47,12 +48,14 @@ test("sending ticket twice does not create duplicate jobs", async () => {
 test("cannot approve unless awaiting_approval", async () => {
     const create = await request(app)
         .post("/api/tickets")
+        .set("x-role", "operator")
         .send({ photoSetId: "Ticket 2", priority: "high", partnerId: "p1" });
 
     const id = create.body.id;
 
     const res = await request(app)
         .post(`/api/tickets/${id}/action`)
+        .set("x-role", "manager")
         .send({ action: "approve" });
 
     expect(res.status).toBe(400);
@@ -61,19 +64,20 @@ test("cannot approve unless awaiting_approval", async () => {
 test("approved tickets appear in library", async () => {
     const create = await request(app)
         .post("/api/tickets")
+        .set("x-role", "operator")
         .send({ photoSetId: "Ticket 3", priority: "high", partnerId: "p1" });
 
     const id = create.body.id;
 
-    await request(app).post(`/api/tickets/${id}/action`).send({ action: "send_to_partner" });
+    await request(app).post(`/api/tickets/${id}/action`).set("x-role", "operator").send({ action: "send_to_partner" });
 
     await waitForStatus(id, "awaiting_approval");
 
-    await request(app).post(`/api/tickets/${id}/action`).send({ action: "approve" });
+    await request(app).post(`/api/tickets/${id}/action`).set("x-role", "manager").send({ action: "approve" });
 
     const library = await request(app).get("/api/library/approved");
     expect(library.body.some((t: any) => t.id === id)).toBe(true);
-});
+}, 15000);
 
 async function waitForStatus(id: string, status: string, timeoutMs = 8000) {
     const start = Date.now();
